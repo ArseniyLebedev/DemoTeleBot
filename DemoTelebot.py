@@ -4,11 +4,11 @@ import telebot
 import config
 import os
 from flask import Flask, request
-from telebot import logger as telebot_logger
-import logging
+#from telebot import logger as telebot_logger
+#import logging
 import functions
 
-telebot_logger.setLevel(logging.DEBUG)
+#telebot_logger.setLevel(logging.DEBUG)
 
 bot = telebot.TeleBot(config.token)
 
@@ -16,8 +16,9 @@ CHAT_IDS = []
 CHAT_ROOM = []
 
 nOfRooms = 0
+debuglocal = True
 
-if "HEROKU" in list(os.environ.keys()):
+if ("HEROKU" in list(os.environ.keys())) or (debuglocal is True):
     server = Flask(__name__)
 
 # @bot.message_handler(commands=['start'])
@@ -73,7 +74,8 @@ def return_to_user(message):
     bot.reply_to(message.chat.id, "Стикер, прикрепленное сообщение, фото или аудио")
     pass
 
-if "HEROKU" in list(os.environ.keys()):
+
+if ("HEROKU" in list(os.environ.keys())) or (debuglocal is True):
     @server.route("/bot", methods=['POST'])
     def getMessage():
         bot.process_new_updates([telebot.types.Update.de_json(request.stream.read().decode("utf-8"))])
@@ -90,10 +92,13 @@ if "HEROKU" in list(os.environ.keys()):
 
 #bot.send_message(264405084, "перед запуском сервера")
 
-if "HEROKU" in list(os.environ.keys()):
-    server.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))
+if ("HEROKU" in list(os.environ.keys())) or (debuglocal is True):
+    bot.send_message(264405084, "сервер запущен")
+    PORT = 8443 #int(os.environ.get('PORT', 83))
+    server.run(host="0.0.0.0", port=PORT)
     server = Flask(__name__)
 else:
+    bot.send_message(264405084, "лонг поллинг работает")
     #если переменной окружения HEROKU нету, значит это запуск с машины разработчика.
     #Удаляем вебхук на всякий случай, и запускаем с обычным поллингом.
     bot.remove_webhook()

@@ -1,15 +1,14 @@
 # -*- coding utf-8 -*-
 
 import telebot
-from telebot import TeleBot
 import config
 import os
-from flask import Flask, request
-#from telebot import logger as telebot_logger
-#import logging
+import flask
+from telebot import logger as telebot_logger
+import logging
 import functions
 
-#telebot_logger.setLevel(logging.DEBUG)
+telebot_logger.setLevel(logging.DEBUG)
 
 bot = telebot.TeleBot(config.token)
 
@@ -17,19 +16,56 @@ CHAT_IDS = []
 CHAT_ROOM = []
 
 nOfRooms = 0
-debuglocal = True
+debuglocal = False
 
-if ("HEROKU" in list(os.environ.keys())) or (debuglocal is True):
-    server = Flask(__name__)
+if debuglocal is True:
+    API_TOKEN = config.token
 
-# @bot.message_handler(commands=['start'])
-# def start(message):
-#     bot.reply_to(message, 'Hello, ' + message.from_user.first_name)
+    WEBHOOK_HOST = '192.168.90.2/PI2'
+    WEBHOOK_PORT = 8443  # 443, 80, 88 or 8443 (port need to be 'open')
+    WEBHOOK_LISTEN = '0.0.0.0'  # In some VPS you may need to put here the IP addr
 
-#
-# @bot.message_handler(func=lambda message: True, content_types=['text'])
-# def echo_message(message):
-#     bot.reply_to(message, message.text)
+    WEBHOOK_SSL_CERT = './webhook_cert.pem'  # Path to the ssl certificate
+    WEBHOOK_SSL_PRIV = './webhook_pkey.pem'  # Path to the ssl private key
+
+    # Quick'n'dirty SSL certificate generation:
+    #
+    # openssl genrsa -out webhook_pkey.pem 2048
+    # openssl req -new -x509 -days 3650 -key webhook_pkey.pem -out webhook_cert.pem
+    #
+    # When asked for "Common Name (e.g. server FQDN or YOUR name)" you should reply
+    # with the same value in you put in WEBHOOK_HOST
+    
+    WEBHOOK_URL_BASE = "https://%s:%s" % (WEBHOOK_HOST, WEBHOOK_PORT)
+    WEBHOOK_URL_PATH = "/%s/" % (API_TOKEN)
+
+
+    logger = telebot.logger
+    telebot.logger.setLevel(logging.INFO)
+
+    #bot = telebot.TeleBot(API_TOKEN)
+
+    app = flask.Flask(__name__)
+
+
+    # Empty webserver index, return nothing, just http 200
+    @app.route('/', methods=['GET', 'HEAD'])
+    def index():
+        bot.send_message(264405084, "начало обрабатываться")
+        return ''
+    
+    
+    # Process webhook calls
+    @app.route(WEBHOOK_URL_PATH, methods=['POST'])
+    def webhook():
+        if flask.request.headers.get('content-type') == 'application/json':
+            json_string = flask.request.get_data().decode('utf-8')
+            update = telebot.types.Update.de_json(json_string)
+            bot.process_new_updates([update])
+            return ''
+        else:
+            flask.abort(403)
+    
 
 
 # '/start' and '/help'.
@@ -76,42 +112,44 @@ def return_to_user(message):
     pass
 
 
-if ("HEROKU" in list(os.environ.keys())) or (debuglocal is True):
-    @server.route("/bot", methods=['POST'])
-    def getMessage():
-        bot.process_new_updates([telebot.types.Update.de_json(request.stream.read().decode("utf-8"))])
-        bot.send_message(264405084, "начало обрабатываться")
-        return "!", 200
+#if debuglocal is True:
+#    @server.route("/bot", methods=['POST'])
+#    def getMessage():
+#        bot.process_new_updates([telebot.types.Update.de_json(request.stream.read().decode("utf-8"))])
+#        bot.send_message(264405084, "начало обрабатываться")
+#        return "!", 200
 
 
-    @server.route("/")
-    def webhook():
-        bot.send_message(264405084, "ставится вебхук")
-        bot.remove_webhook()
-        bot.set_webhook(url="https://demotelegrambot.herokuapp.com")
-        return "!", 200
+#    @server.route("/")
+#    def webhook():
+#        bot.send_message(264405084, "ставится вебхук")
+#        bot.remove_webhook()
+#        bot.set_webhook(url="https://demotelegrambot.herokuapp.com")
+#        return "!", 200
 
-#bot.send_message(264405084, "перед запуском сервера")
 
-if ("HEROKU" in list(os.environ.keys())) or (debuglocal is True):
+   
+bot.send_message(264405084, "перед запуском сервера")
+
+if debuglocal is True:
+     # Remove webhook, it fails sometimes the set if there is a previous webhook
+    bot.remove_webhook()
+    bot.send_message(264405084, "ставится вебхук")
+    # Set webhook
+    bot.set_webhook(url=WEBHOOK_URL_BASE+WEBHOOK_URL_PATH,
+                    certificate=open(WEBHOOK_SSL_CERT, 'r'))
+
     bot.send_message(264405084, "сервер запущен")
-    PORT = 8443 #int(os.environ.get('PORT', 83))
-    server.run(host="0.0.0.0", port=PORT)
-    server = Flask(__name__)
+    # Start flask server
+    app.run(host=WEBHOOK_LISTEN,
+            port=WEBHOOK_PORT,
+            ssl_context=(WEBHOOK_SSL_CERT, WEBHOOK_SSL_PRIV),
+            debug=True)
+    
+   
 else:
     bot.send_message(264405084, "лонг поллинг работает")
     #если переменной окружения HEROKU нету, значит это запуск с машины разработчика.
     #Удаляем вебхук на всякий случай, и запускаем с обычным поллингом.
     bot.remove_webhook()
     bot.polling(none_stop=True)
-
-
-
-#if __name__ == '__main__':
-#     if "HEROKU" in list(os.environ.keys()):
-#         print('heroku')
-#     else:
-#         # если переменной окружения HEROKU нету, значит это запуск с машины разработчика.
-#         # Удаляем вебхук на всякий случай, и запускаем с обычным поллингом.
-#         bot.remove_webhook()
-#         bot.polling(none_stop=True)

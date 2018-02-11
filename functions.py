@@ -1,6 +1,6 @@
 def create_chat_room(current_chat_message_id, num_of_rooms, CHAT_ROOM,CHAT_IDS):
     CHAT_ROOM.append([])
-    CHAT_ROOM[num_of_rooms].append(int(current_chat_message_id))
+    CHAT_ROOM[num_of_rooms].append(current_chat_message_id)
     if current_chat_message_id in CHAT_IDS:
         CHAT_IDS.remove(current_chat_message_id)
     else:

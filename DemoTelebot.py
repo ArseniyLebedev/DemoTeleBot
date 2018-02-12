@@ -83,6 +83,19 @@ if run_on_server is True:
 def handle_start_help(message):
     bot.send_message(message.chat.id, "Это демонстрационный бот, который ищет для Вас случайного собеседника для общения. Чтоб найти собеседника выполните команду /find_chat_friend")
 
+    # Добавим id диалога с новоприбывшим пользователем бота
+    try:
+        file_chat_ids = open("chatID.txt", 'r')
+        for line in file_chat_ids:
+            if int(line) == message.chat.id:
+                return
+        file_chat_ids.close()
+        file_chat_ids = open("chatID.txt", 'a')
+        file_chat_ids.writelines(str(message.chat.id) + '\n')
+    except Exception:
+        telebot_logger.error("Can't write chat IDs into the file {}".format(file_chat_ids.name))
+    finally:
+        file_chat_ids.close()
 
 # поиск случайного собеседника
 @bot.message_handler(commands=['find_chat_friend'])
@@ -91,12 +104,7 @@ def send_mail_to_another_chat(message):
     # Сохраняем ChatID текущего пользователя в список и в файл
     if (not(message.chat.id in CHAT_IDS)) and (not(message.chat.id in CHAT_ROOM)):
         CHAT_IDS.append(message.chat.id)
-        try:
-            file_chat_ids = open("chatID.txt", 'a')
-            file_chat_ids.writelines(str(message.chat.id)+"\n")
-            file_chat_ids.close()
-        except Exception:
-            telebot_logger.error("Can't write chat IDs into the file {}".format(file_chat_ids.name))
+
 
     already_in_chat = functions.find_chat_ID_to_send(message.chat.id, nOfRooms, CHAT_ROOM)
     if len(CHAT_IDS) > 1 and already_in_chat == 'notInChat':
@@ -108,6 +116,7 @@ def send_mail_to_another_chat(message):
 # сброс диалога со случайным собеседником
 @bot.message_handler(commands=["abort_chat_friend"])
 def ansverCommand(message):
+    global nOfRooms
     bot.send_message(message.chat.id, "Сбрасываем диалог с текущим собеседником")
     for room in CHAT_ROOM:
         for chat_id in room:
@@ -135,18 +144,24 @@ def return_to_user(message):
     else:
         bot.send_sticker(chat_id_to_send, message.sticker.file_id)
 
-@bot.message_handler(content_types=["audio"])
-def return_to_user(message):
-    bot.send_audio(message.chat.id, message.audio.file_id)
+# @bot.message_handler(content_types=["audio"])
+# def return_to_user(message):
+#     bot.send_audio(message.chat.id, message.audio.file_id)
 
 @bot.message_handler(content_types=["photo"])
 def return_to_user(message):
-    bot.send_photo(message.chat.id, message.photo.file_id)
+    chat_id_to_send = functions.find_chat_ID_to_send(message.chat.id, nOfRooms, CHAT_ROOM)
+    if chat_id_to_send == 'notInChat':
+        bot.send_message(message.chat.id,
+                         "Мы не нашли еще для вас пару, попробуйте еще раз найти собеседника с помощью команды /find_chat_friend")
+    else:
+        bot.send_photo(message.chat.id, message.photo[1].file_id)
 
-@bot.message_handler(content_types=["pinned_message", "photo"])
+
+@bot.message_handler(content_types=["pinned_message", "photo", "audio"])
 def return_to_user(message):
     bot.send_message(message.chat.id, "прикрепленное сообщение, фото или аудио")
-    bot.send_audio(message.chat.id, message.audio.file_id)
+    #bot.send_audio(message.chat.id, message.audio.file_id)
     pass
 
 @bot.message_handler(content_types=["text"])

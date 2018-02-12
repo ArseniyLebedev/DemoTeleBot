@@ -5,19 +5,29 @@ from telebot import TeleBot
 import config
 import os
 from flask import Flask, request
-#from telebot import logger as telebot_logger
-#import logging
+from telebot import logger as telebot_logger
+import logging
 import functions
 
-#telebot_logger.setLevel(logging.DEBUG)
+telebot_logger.setLevel(logging.DEBUG)
 
 bot = telebot.TeleBot(config.token)
 
-CHAT_IDS = []
-CHAT_ROOM = []
 
+CHAT_IDS = []
+try:
+    file_chat_ids = open("chatID.txt", "r")
+    for line in file_chat_ids:
+        CHAT_IDS.append(line)
+    file_chat_ids.close()
+    file_chat_ids.open("chatID.txt", "a")
+except:
+    file_chat_ids = open("chatID.txt", "w")
+    file_chat_ids.close()
+
+CHAT_ROOM = []
 nOfRooms = 0
-debuglocal = True
+debuglocal = False
 
 if ("HEROKU" in list(os.environ.keys())) or (debuglocal is True):
     server = Flask(__name__)
@@ -41,11 +51,19 @@ def handle_start_help(message):
 @bot.message_handler(commands=['action'])
 def send_mail_to_another_chat(message):
     global nOfRooms
-    if ((not(message.chat.id in CHAT_IDS)) and (not(message.chat.id in CHAT_ROOM))):
+
+    if (not(message.chat.id in CHAT_IDS)) and (not(message.chat.id in CHAT_ROOM)):
         CHAT_IDS.append(message.chat.id)
+        try:
+            file_chat_ids.open("chatID.txt", "a")
+            file_chat_ids.writelines(message.chat.id)
+            file_chat_ids.close()
+        except:
+            telebot_logger.error("Can't write chat IDs into the file {}".format(file_chat_ids.name))
+
     alreadyInChat = functions.find_chat_ID_to_send(message.chat.id, nOfRooms, CHAT_ROOM)
     if len(CHAT_IDS) > 1 and alreadyInChat=='notInChat':
-        nOfRooms = functions.create_chat_room(int(message.chat.id), nOfRooms, CHAT_IDS, CHAT_IDS)
+        nOfRooms = functions.create_chat_room(int(message.chat.id), nOfRooms, CHAT_ROOM, CHAT_IDS)
         bot.send_message(message.chat.id, "Мы нашли вам тайного собеседника, просто напишите ему здесь что-нибудь, и он получит это сообщение от Вас тайно")
     else:
         bot.send_message(message.chat.id, "Мы пока что не нашли вам тайного собеседника. Попробуйте воспользоваться командой поиска еще раз")
@@ -61,6 +79,29 @@ def ansverCommand(message):
     #            bot.send_message(message.chat.id, ', '.join(row))
 
 
+@bot.message_handler(content_types=["sticker"])
+def return_to_user(message):
+    chat_id_to_send = functions.find_chat_ID_to_send(message.chat.id, nOfRooms, CHAT_ROOM)
+    if chat_id_to_send == 'notInChat':
+        bot.send_message(message.chat.id,
+                         "Мы не нашли еще для вас пару, попробуйте еще раз найти собеседника с помощью команды /action")
+    else:
+        bot.send_sticker(chat_id_to_send, message.sticker.file_id)
+
+@bot.message_handler(content_types=["audio"])
+def return_to_user(message):
+    bot.send_audio(message.chat.id, message.audio.file_id)
+
+@bot.message_handler(content_types=["photo"])
+def return_to_user(message):
+    bot.send_photo(message.chat.id, message.photo.file_id)
+
+@bot.message_handler(content_types=["pinned_message", "photo"])
+def return_to_user(message):
+    bot.send_message(message.chat.id, "прикрепленное сообщение, фото или аудио")
+    bot.send_audio(message.chat.id, message.audio.file_id)
+    pass
+
 @bot.message_handler(content_types=["text"])
 def repeat_all_messages_to_another_user(message):
     chat_id_to_send = functions.find_chat_ID_to_send(message.chat.id, nOfRooms, CHAT_ROOM)
@@ -68,12 +109,6 @@ def repeat_all_messages_to_another_user(message):
         bot.send_message(message.chat.id, "Мы не нашли еще для вас пару, попробуйте еще раз найти собеседника с помощью команды /action")
     else:
         bot.send_message(chat_id_to_send, message.text)
-
-
-@bot.message_handler(content_types=["sticker", "pinned_message", "photo", "audio"])
-def return_to_user(message):
-    bot.reply_to(message.chat.id, "Стикер, прикрепленное сообщение, фото или аудио")
-    pass
 
 
 if ("HEROKU" in list(os.environ.keys())) or (debuglocal is True):

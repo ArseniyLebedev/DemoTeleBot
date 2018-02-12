@@ -16,13 +16,12 @@ bot = telebot.TeleBot(config.token)
 
 CHAT_IDS = []
 try:
-    file_chat_ids = open("chatID.txt", "r")
+    file_chat_ids = open("chatID.txt", 'r')
     for line in file_chat_ids:
         CHAT_IDS.append(line)
     file_chat_ids.close()
-    file_chat_ids.open("chatID.txt", "a")
 except:
-    file_chat_ids = open("chatID.txt", "w")
+    file_chat_ids = open("chatID.txt", 'w')
     file_chat_ids.close()
 
 CHAT_ROOM = []
@@ -55,8 +54,8 @@ def send_mail_to_another_chat(message):
     if (not(message.chat.id in CHAT_IDS)) and (not(message.chat.id in CHAT_ROOM)):
         CHAT_IDS.append(message.chat.id)
         try:
-            file_chat_ids.open("chatID.txt", "a")
-            file_chat_ids.writelines(message.chat.id)
+            file_chat_ids = open("chatID.txt", 'a')
+            file_chat_ids.writelines(str(message.chat.id)+"\n")
             file_chat_ids.close()
         except:
             telebot_logger.error("Can't write chat IDs into the file {}".format(file_chat_ids.name))

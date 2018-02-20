@@ -7,11 +7,14 @@ import flask
 from telebot import logger as telebot_logger
 import logging
 import functions
+import User
 
 telebot_logger.setLevel(logging.DEBUG)
 
 bot = telebot.TeleBot(config.token)
 
+#Создать список юзеров и заполнять его когда добавляется новый юзер
+user_list = list(User)
 # Считывание базы ID из файлов
 CHAT_IDS = []
 try:
@@ -82,7 +85,7 @@ if run_on_server is True:
 @bot.message_handler(commands=['start', 'help'])
 def handle_start_help(message):
     bot.send_message(message.chat.id, "Это демонстрационный бот, который ищет для Вас случайного собеседника для общения. Чтоб найти собеседника выполните команду /find_chat_friend")
-
+    #if message.chat.id in user_list.idchat
     # Добавим id диалога с новоприбывшим пользователем бота
     try:
         file_chat_ids = open("chatID.txt", 'r')
@@ -101,10 +104,9 @@ def handle_start_help(message):
 @bot.message_handler(commands=['find_chat_friend'])
 def send_mail_to_another_chat(message):
     global nOfRooms
-    # Сохраняем ChatID текущего пользователя в список и в файл
+    # Сохраняем ChatID текущего пользователя в список
     if (not(message.chat.id in CHAT_IDS)) and (not(message.chat.id in CHAT_ROOM)):
         CHAT_IDS.append(message.chat.id)
-
 
     already_in_chat = functions.find_chat_ID_to_send(message.chat.id, nOfRooms, CHAT_ROOM)
     if len(CHAT_IDS) > 1 and already_in_chat == 'notInChat':

@@ -21,7 +21,7 @@ list_of_friends = list()
 
 # Считывание базы ID из файлов
 CHAT_IDS = []
-with  open("chatID.txt", 'r') as file_chat_ids
+with  open("chatID.txt", 'r') as file_chat_ids:
     for line in file_chat_ids:
         user_dict[int(line)] = User.ChatUser(int(line))
         CHAT_IDS.append(int(line))
@@ -90,36 +90,28 @@ def handle_start_help(message):
     # Добавим id диалога с новоприбывшим пользователем бота
     if message.chat.id not in user_dict.keys():
         user_dict[message.chat.id] = User.ChatUser(message.chat.id)
-    with open("chatID.txt", 'r') as file_chat_ids
+    with open("chatID.txt", 'r') as file_chat_ids:
         for line in file_chat_ids:
             if int(line) == message.chat.id:
                 return
-    with open("chatID.txt", 'a') as file_chat_ids
+    with open("chatID.txt", 'a') as file_chat_ids:
         file_chat_ids.writelines(str(message.chat.id) + '\n')
 
 
 # поиск случайного собеседника
 @bot.message_handler(commands=['find_chat_friend'])
 def send_mail_to_another_chat(message):
+    if message.chat.id not in user_dict.keys():
+        user_dict[message.chat.id] = User.ChatUser(message.chat.id)
     # assert isinstance((user_dict[message.chat.id]).in_chat, User.ChatUser)
     if not user_dict[message.chat.id].in_chat:
-        list_of_friends.append(user_dict[message.chat.id], bot)
-        user_dict[message.chat.id].find_friend(list_of_friends)
+        list_of_friends.append(user_dict[message.chat.id])
+        user_dict[message.chat.id].find_friend(list_of_friends, bot)
     else:
         bot.send_message(message.chat.id,
                          "Мы уже нашли вам тайного собеседника. Просто общайтесь, или сбросьте егоо командой /abort_chat_friend")
 
-    # global nOfRooms
-    # # Сохраняем ChatID текущего пользователя в список
-    # if (not(message.chat.id in CHAT_IDS)) and (not(message.chat.id in CHAT_ROOM)):
-    #     CHAT_IDS.append(message.chat.id)
-    #
-    # already_in_chat = functions.find_chat_ID_to_send(message.chat.id, nOfRooms, CHAT_ROOM)
-    # if len(CHAT_IDS) > 1 and already_in_chat == 'notInChat':
-    #     nOfRooms = functions.create_chat_room(int(message.chat.id), nOfRooms, CHAT_ROOM, CHAT_IDS)
-    #     bot.send_message(message.chat.id, "Мы нашли вам тайного собеседника, просто напишите ему здесь что-нибудь, и он получит это сообщение от Вас тайно")
-    # else:
-    #     bot.send_message(message.chat.id, "Мы пока что не нашли вам тайного собеседника. Попробуйте воспользоваться командой поиска еще раз")
+  
 
 # сброс диалога со случайным собеседником
 @bot.message_handler(commands=["abort_chat_friend"])
@@ -129,23 +121,7 @@ def answer_command(message):
     else:
         bot.send_message(message.chat.id,
                          "Вы не участвуете ни в каком диалоге, в начале начните диалог с кем-нибудь при помощи команды /find_chat_friend")
-    # global nOfRooms
-    # bot.send_message(message.chat.id, "Сбрасываем диалог с текущим собеседником")
-    # for room in CHAT_ROOM:
-    #     for chat_id in room:
-    #         if chat_id == message.chat.id:
-    #             bot.send_message(room[0], "Диалог сброшен. Чтобы найти нового собеседника нажмите /find_chat_friend")
-    #             bot.send_message(room[1], "Диалог сброшен. Чтобы найти нового собеседника нажмите /find_chat_friend")
-    #             CHAT_ROOM.remove(room)
-    #             nOfRooms -= 1
-    #             return
-    # bot.send_message(message.chat.id, "Вы не участвуете ни в каком диалоге, в начале начните диалог с кем-нибудь при помощи команды /find_chat_friend")
 
-    #with open('TableTime.csv', newline='') as csvfile:
-    #    spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
-    #    for row in spamreader:
-    #        if str(row).find('empty') != -1:
-    #            bot.send_message(message.chat.id, ', '.join(row))
 
 # Переслать стикер
 @bot.message_handler(content_types=["sticker"])
@@ -183,7 +159,7 @@ def repeat_all_messages_to_another_user(message):
     else:
         bot.send_message(message.chat.id,
                          "Мы не нашли еще для вас пару, попробуйте еще раз найти собеседника с помощью команды /find_chat_friend")
-    
+
 
 if run_on_server is True:
      # Remove webhook, it fails sometimes the set if there is a previous webhook
@@ -203,7 +179,7 @@ if run_on_server is True:
    
 else:
     bot.send_message(264405084, "лонг поллинг работает")
-    #если переменной окружения run_on_server не True, значит это запуск с машины разработчика.
+    #если run_on_server не True, значит это запуск с машины разработчика.
     #Удаляем вебхук на всякий случай, и запускаем с обычным поллингом.
     bot.remove_webhook()
     bot.polling(none_stop=True)

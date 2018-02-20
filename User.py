@@ -16,7 +16,7 @@ class ChatUser:
         """
         self.in_chat = True
         self.friend = friend
-        self.id_to_send = friend.chat.id
+        self.id_to_send = friend.chat_id
         self.list_of_chat_id.append(friend)
         return 'connected'
 
@@ -35,6 +35,7 @@ class ChatUser:
 
                     bot.send_message(self.chat_id, "Мы нашли вам тайного собеседника, "
                                                 "просто напишите ему здесь что-нибудь, и он получит это сообщение от Вас тайно")
+                    return
 
             bot.send_message(self.chat_id, "Мы пока что не нашли вам тайного собеседника. Попробуйте воспользоваться командой поиска еще раз")
         else:

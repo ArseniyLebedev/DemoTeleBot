@@ -1,13 +1,13 @@
 # -*- coding utf-8 -*-
-
 import telebot
-import config
-import os
-import flask
 from telebot import logger as telebot_logger
 import logging
-import functions
+import flask
+import config
 import User
+import sys
+
+sys.stderr = open('error.log', 'w')
 
 telebot_logger.setLevel(logging.DEBUG)
 
@@ -21,14 +21,17 @@ list_of_friends = list()
 
 # Считывание базы ID из файлов
 CHAT_IDS = []
-with  open("chatID.txt", 'r') as file_chat_ids:
-    for line in file_chat_ids:
-        user_dict[int(line)] = User.ChatUser(int(line))
-        CHAT_IDS.append(int(line))
+try:
+    with open(config.BASE_FILE_NAME, 'r') as file_chat_ids:
+        for line in file_chat_ids:
+            user_dict[int(line)] = User.ChatUser(int(line)) # создаем юзеров с таким chat ID
+            CHAT_IDS.append(int(line))
+except FileNotFoundError:
+    with open(config.BASE_FILE_NAME, 'w')as file_chat_ids:
+        pass
 
 CHAT_ROOM = []
 
-# nOfRooms = 0
 run_on_server = False
 
 if run_on_server is True:
@@ -85,16 +88,16 @@ if run_on_server is True:
 @bot.message_handler(commands=['start', 'help'])
 def handle_start_help(message):
     bot.send_message(message.chat.id,
-                     "Это демонстрационный бот, который ищет для Вас случайного собеседника для общения. "
-                     "Чтобы найти собеседника выполните команду /find_chat_friend")
+                     "Это бот, который ищет для Вас случайного собеседника для общения. "
+                     "Чтобы найти собеседника выполните команду \n/find_chat_friend")
     # Добавим id диалога с новоприбывшим пользователем бота
     if message.chat.id not in user_dict.keys():
         user_dict[message.chat.id] = User.ChatUser(message.chat.id)
-    with open("chatID.txt", 'r') as file_chat_ids:
+    with open(config.BASE_FILE_NAME, 'r') as file_chat_ids:
         for line in file_chat_ids:
             if int(line) == message.chat.id:
                 return
-    with open("chatID.txt", 'a') as file_chat_ids:
+    with open(config.BASE_FILE_NAME, 'a') as file_chat_ids:
         file_chat_ids.writelines(str(message.chat.id) + '\n')
 
 
@@ -109,9 +112,9 @@ def send_mail_to_another_chat(message):
         user_dict[message.chat.id].find_friend(list_of_friends, bot)
     else:
         bot.send_message(message.chat.id,
-                         "Мы уже нашли вам тайного собеседника. Просто общайтесь, или сбросьте егоо командой /abort_chat_friend")
+                         "Мы уже нашли вам тайного собеседника. Просто общайтесь, или сбросьте егоо командой \n/abort_chat_friend")
 
-  
+
 
 # сброс диалога со случайным собеседником
 @bot.message_handler(commands=["abort_chat_friend"])
@@ -120,7 +123,7 @@ def answer_command(message):
         user_dict[message.chat.id].abort_chat(bot, None)
     else:
         bot.send_message(message.chat.id,
-                         "Вы не участвуете ни в каком диалоге, в начале начните диалог с кем-нибудь при помощи команды /find_chat_friend")
+                         "Вы не участвуете ни в каком диалоге, в начале начните диалог с кем-нибудь при помощи команды \n/find_chat_friend")
 
 
 # Переслать стикер
@@ -130,7 +133,7 @@ def return_to_user(message):
         bot.send_sticker(user_dict[message.chat.id].id_to_send, message.sticker.file_id)
     else:
         bot.send_message(message.chat.id,
-                         "Мы не нашли еще для вас пару, попробуйте еще раз найти собеседника с помощью команды /find_chat_friend")
+                         "Мы не нашли еще для вас пару, попробуйте еще раз найти собеседника с помощью команды \n/find_chat_friend")
 
 
 # @bot.message_handler(content_types=["audio"])
@@ -143,7 +146,7 @@ def return_to_user(message):
         bot.send_photo(user_dict[message.chat.id].id_to_send, message.photo[1].file_id)
     else:
         bot.send_message(message.chat.id,
-                         "Мы не нашли еще для вас пару, попробуйте еще раз найти собеседника с помощью команды /find_chat_friend")
+                         "Мы не нашли еще для вас пару, попробуйте еще раз найти собеседника с помощью команды \n/find_chat_friend")
 
 
 @bot.message_handler(content_types=["pinned_message", "photo", "audio"])
@@ -158,7 +161,7 @@ def repeat_all_messages_to_another_user(message):
         bot.send_message(user_dict[message.chat.id].id_to_send,  message.text)
     else:
         bot.send_message(message.chat.id,
-                         "Мы не нашли еще для вас пару, попробуйте еще раз найти собеседника с помощью команды /find_chat_friend")
+                         "Мы не нашли еще для вас пару, попробуйте еще раз найти собеседника с помощью команды \n/find_chat_friend")
 
 
 if run_on_server is True:

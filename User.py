@@ -1,7 +1,6 @@
 class ChatUser:
     # in_chat
     list_of_chat_id = []
-
     def __init__(self, chat_id=None, in_chat=False, male=None):
         self.id_to_send = None
         self.in_chat = in_chat
@@ -54,7 +53,7 @@ class ChatUser:
 
         # говорим что мы больше не в чате и у нас нет id чата для отправки и удаляем нашего друга
         self.__abort(chat_room_list)
-        bot.send_message(self.chat_id, "Диалог сброшен. Чтобы найти нового собеседника нажмите /find_chat_friend")
+        bot.send_message(self.chat_id, "Диалог сброшен. Чтобы найти нового собеседника нажмите \n/find_chat_friend")
 
     def __abort(self, chat_room_list):
         """
@@ -72,4 +71,4 @@ class ChatUser:
     def __chat_aborted_by_friend(self, bot, chat_room_list=None):
         self.__abort(chat_room_list)
         bot.send_message(self.chat_id, "Диалог с Вами был сброшен собеседником. Не расстраивайтесь, "
-                                       "Вы найдете кого-нибудь получше. Чтобы найти нового собеседника нажмите /find_chat_friend")
+                                       "Вы найдете кого-нибудь получше. Чтобы найти нового собеседника нажмите \n/find_chat_friend")

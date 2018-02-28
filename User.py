@@ -1,17 +1,23 @@
 class ChatUser:
-    # in_chat
+    """
+    Класс описывающий пользователя и все команды по нахождению ему собеседника
+    """
     list_of_chat_id = []
+    """Список ID чатов с которыми связывались ChatUser.list_of_chat_id"""
+
     def __init__(self, chat_id=None, in_chat=False, male=None):
         self.id_to_send = None
         self.in_chat = in_chat
         self.chat_id = chat_id
+        """Булева переменная о том находится ли уже в чате с кем-то юзер или нет"""
+        self.friend = ChatUser
+        """Ссылка на друга User с которым говоришь - не на инстанс класса """
         self.male = male
-        self.friend = ChatUser  # ссылка на друга User с которым говоришь - не на инстанс класса
 
     def connect_friend(self, friend):
         """
         :param friend: ChatUser
-        :return:
+        :return: 'connected"
         """
         self.in_chat = True
         self.friend = friend
@@ -19,7 +25,7 @@ class ChatUser:
         self.list_of_chat_id.append(friend)
         return 'connected'
 
-    def find_friend(self, list_of_friends_who_want_you: list, bot): #, num_of_rooms, chat_room_list):
+    def find_friend(self, list_of_friends_who_want_you: list, bot):
         if not self.in_chat:
             for f in list_of_friends_who_want_you:
                 # Если мы не в чате, если текущий элемент не мы сами и если мы не подключались к этому пользователю

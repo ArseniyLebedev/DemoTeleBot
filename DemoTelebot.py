@@ -6,35 +6,36 @@ import flask
 import config
 import User
 import sys
+from api_token import API_TOKEN
+import functions
 
 sys.stderr = open('error.log', 'w')
 
-telebot_logger.setLevel(logging.DEBUG)
 
-bot = telebot.TeleBot(config.token)
+if config.DEBUG:
+    telebot_logger.setLevel(logging.DEBUG)
+else:
+    telebot_logger.setLevel(logging.INFO)
+
+bot = telebot.TeleBot(API_TOKEN)
 
 #Создать словарь юзеров и заполнять его когда добавляется новый юзер
-user_dict = dict()
+dict_users = dict()
 
 # Список пользователей находящихся в поиске друга
 list_of_friends = list()
 
-# Считывание базы ID из файлов
-CHAT_IDS = []
+# Считывание базы ID из файла. Сохраниение в dict_users
 try:
     with open(config.BASE_FILE_NAME, 'r') as file_chat_ids:
         for line in file_chat_ids:
-            user_dict[int(line)] = User.ChatUser(int(line)) # создаем юзеров с таким chat ID
-            CHAT_IDS.append(int(line))
+            dict_users[int(line)] = User.ChatUser(int(line)) # создаем юзеров с таким chat ID
 except FileNotFoundError:
     with open(config.BASE_FILE_NAME, 'w')as file_chat_ids:
         pass
 
-CHAT_ROOM = []
 
-run_on_server = False
-
-if run_on_server is True:
+if config.RUN_ON_SERVER is True:
     API_TOKEN = config.token
 
     WEBHOOK_HOST = '192.168.90.2'
@@ -67,7 +68,8 @@ if run_on_server is True:
     # Empty webserver index, return nothing, just http 200
     @app.route('/', methods=['GET', 'HEAD'])
     def index():
-        bot.send_message(264405084, "начало обрабатываться")
+        if config.DEBUG:
+            bot.send_message(264405084, "начало обрабатываться")
         return ''
     
     
@@ -78,38 +80,29 @@ if run_on_server is True:
             json_string = flask.request.get_data().decode('utf-8')
             update = telebot.types.Update.de_json(json_string)
             bot.process_new_updates([update])
-            bot.send_message(264405084, "Вебхуки готовы")
+            if config.DEBUG:
+                bot.send_message(264405084, "Вебхуки готовы")
             return ''
         else:
             flask.abort(403)
     
 
-# '/start' and '/help'.
+# '/start' и '/help'.
 @bot.message_handler(commands=['start', 'help'])
 def handle_start_help(message):
     bot.send_message(message.chat.id,
                      "Это бот, который ищет для Вас случайного собеседника для общения. "
                      "Чтобы найти собеседника выполните команду \n/find_chat_friend")
-    # Добавим id диалога с новоприбывшим пользователем бота
-    if message.chat.id not in user_dict.keys():
-        user_dict[message.chat.id] = User.ChatUser(message.chat.id)
-    with open(config.BASE_FILE_NAME, 'r') as file_chat_ids:
-        for line in file_chat_ids:
-            if int(line) == message.chat.id:
-                return
-    with open(config.BASE_FILE_NAME, 'a') as file_chat_ids:
-        file_chat_ids.writelines(str(message.chat.id) + '\n')
+    # Добавим id диалога с новоприбывшим пользователем бота в словарь и в файл
+    functions.add_user_to_dict(dict_users, message.chat.id)
 
 
 # поиск случайного собеседника
 @bot.message_handler(commands=['find_chat_friend'])
 def send_mail_to_another_chat(message):
-    if message.chat.id not in user_dict.keys():
-        user_dict[message.chat.id] = User.ChatUser(message.chat.id)
-    # assert isinstance((user_dict[message.chat.id]).in_chat, User.ChatUser)
-    if not user_dict[message.chat.id].in_chat:
-        list_of_friends.append(user_dict[message.chat.id])
-        user_dict[message.chat.id].find_friend(list_of_friends, bot)
+    if not functions.is_user_in_chat(dict_users, message.chat.id):
+        list_of_friends.append(dict_users[message.chat.id])
+        dict_users[message.chat.id].find_friend(list_of_friends, bot)
     else:
         bot.send_message(message.chat.id,
                          "Мы уже нашли вам тайного собеседника. Просто общайтесь, или сбросьте егоо командой \n/abort_chat_friend")
@@ -119,8 +112,8 @@ def send_mail_to_another_chat(message):
 # сброс диалога со случайным собеседником
 @bot.message_handler(commands=["abort_chat_friend"])
 def answer_command(message):
-    if user_dict[message.chat.id].in_chat:
-        user_dict[message.chat.id].abort_chat(bot, None)
+    if functions.is_user_in_chat(dict_users, message.chat.id):
+        dict_users[message.chat.id].abort_chat(bot, None)
     else:
         bot.send_message(message.chat.id,
                          "Вы не участвуете ни в каком диалоге, в начале начните диалог с кем-нибудь при помощи команды \n/find_chat_friend")
@@ -129,8 +122,8 @@ def answer_command(message):
 # Переслать стикер
 @bot.message_handler(content_types=["sticker"])
 def return_to_user(message):
-    if user_dict[message.chat.id].in_chat:
-        bot.send_sticker(user_dict[message.chat.id].id_to_send, message.sticker.file_id)
+    if functions.is_user_in_chat(dict_users, message.chat.id):
+        bot.send_sticker(dict_users[message.chat.id].id_to_send, message.sticker.file_id)
     else:
         bot.send_message(message.chat.id,
                          "Мы не нашли еще для вас пару, попробуйте еще раз найти собеседника с помощью команды \n/find_chat_friend")
@@ -142,8 +135,8 @@ def return_to_user(message):
 
 @bot.message_handler(content_types=["photo"])
 def return_to_user(message):
-    if user_dict[message.chat.id].in_chat:
-        bot.send_photo(user_dict[message.chat.id].id_to_send, message.photo[1].file_id)
+    if functions.is_user_in_chat(dict_users, message.chat.id):
+        bot.send_photo(dict_users[message.chat.id].id_to_send, message.photo[1].file_id)
     else:
         bot.send_message(message.chat.id,
                          "Мы не нашли еще для вас пару, попробуйте еще раз найти собеседника с помощью команды \n/find_chat_friend")
@@ -155,24 +148,26 @@ def return_to_user(message):
     #bot.send_audio(message.chat.id, message.audio.file_id)
     pass
 
+
 @bot.message_handler(content_types=["text"])
 def repeat_all_messages_to_another_user(message):
-    if user_dict[message.chat.id].in_chat:
-        bot.send_message(user_dict[message.chat.id].id_to_send,  message.text)
+    if functions.is_user_in_chat(dict_users, message.chat.id):
+        bot.send_message(dict_users[message.chat.id].id_to_send, message.text)
     else:
         bot.send_message(message.chat.id,
                          "Мы не нашли еще для вас пару, попробуйте еще раз найти собеседника с помощью команды \n/find_chat_friend")
 
 
-if run_on_server is True:
+if config.RUN_ON_SERVER is True:
      # Remove webhook, it fails sometimes the set if there is a previous webhook
     bot.remove_webhook()
-    bot.send_message(264405084, "ставится вебхук")
+    if config.DEBUG:
+        bot.send_message(264405084, "ставится вебхук")
     # Set webhook
     bot.set_webhook(url=WEBHOOK_URL_BASE+WEBHOOK_URL_PATH,
                     certificate=open(WEBHOOK_SSL_CERT, 'r'))
-
-    bot.send_message(264405084, "сервер запущен")
+    if config.DEBUG:
+        bot.send_message(264405084, "сервер запущен")
     # Start flask server
     app.run(host=WEBHOOK_LISTEN,
             port=WEBHOOK_PORT,
@@ -181,8 +176,9 @@ if run_on_server is True:
     
    
 else:
-    bot.send_message(264405084, "лонг поллинг работает")
-    #если run_on_server не True, значит это запуск с машины разработчика.
+    if config.DEBUG:
+        bot.send_message(264405084, "лонг поллинг работает")
+    #если config.RUN_ON_SERVER не True, значит это запуск с машины разработчика.
     #Удаляем вебхук на всякий случай, и запускаем с обычным поллингом.
     bot.remove_webhook()
     bot.polling(none_stop=True)

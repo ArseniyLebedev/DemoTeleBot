@@ -1,21 +1,23 @@
+from config import BASE_FILE_NAME
+from User import ChatUser
 
 
-def create_chat_room(current_chat_message_id, num_of_rooms, chat_room_list, chat_ids_list):
-    chat_room_list.append([])
-    chat_room_list[num_of_rooms].append(int(current_chat_message_id))
-    if current_chat_message_id in chat_ids_list:
-        chat_ids_list.remove(current_chat_message_id)
+def add_user_to_dict(dict_users, chat_id):
+    if chat_id not in dict_users.keys():
+        dict_users[chat_id] = ChatUser(chat_id)
+        # assert isinstance((dict_users[chat_id]).in_chat, User.ChatUser)
+
+    with open(BASE_FILE_NAME, 'r') as file_chat_ids:
+        for line in file_chat_ids:
+            if int(line) == chat_id:
+                return
+    with open(BASE_FILE_NAME, 'a') as file_chat_ids:
+        file_chat_ids.writelines(str(chat_id) + '\n')
+
+
+def is_user_in_chat(dict_users, chat_id):
+    add_user_to_dict(dict_users, chat_id)
+    if dict_users[chat_id].in_chat:
+        return True
     else:
-        assert "Нарушена логика, проблема при создании комнаты чата"
-    chat_room_list[num_of_rooms].append(int(chat_ids_list.pop()))
-    num_of_rooms = num_of_rooms + 1
-    return num_of_rooms
-
-
-def find_chat_ID_to_send(current_chat_message_id, num_of_rooms, chat_room_list):
-    for i in range(num_of_rooms):
-        if chat_room_list[i][0] == current_chat_message_id:
-            return chat_room_list[i][1]
-        elif chat_room_list[i][1] == current_chat_message_id:
-            return chat_room_list[i][0]
-    return 'notInChat'
+        return False
